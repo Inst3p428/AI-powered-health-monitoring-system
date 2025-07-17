@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Health Monitor Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+        .metric { font-size: 1.5rem; margin: 10px 0; }
+        .alert { background: #ffcccc; padding: 10px; margin: 10px 0; border-left: 6px solid red; }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Health Monitoring</h1>
+
+    <div id="metrics">
+        <div class="metric">Heart Rate: <span id="hr">--</span> bpm</div>
+        <div class="metric">SpO₂: <span id="spo2">--</span>%</div>
+        <div class="metric">Activity (METs): <span id="met">--</span></div>
+    </div>
+
+    <div id="alerts"></div>
+
+    <canvas id="hrChart" width="600" height="200"></canvas>
+    <canvas id="spo2Chart" width="600" height="200"></canvas>
+    <canvas id="metChart" width="600" height="200"></canvas>
+
+    <script>
+    let hrData = [];
+    let spo2Data = [];
+    let metData = [];
+
+    function updateDashboard() {
+        fetch("/api/data")
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("hr").textContent = data.hr;
+                document.getElementById("spo2").textContent = data.spo2;
+                document.getElementById("met").textContent = data.met;
+
+                const alertsDiv = document.getElementById("alerts");
+                alertsDiv.innerHTML = "";
+                data.alerts.forEach(a => {
+                    alertsDiv.innerHTML += `<div class="alert">${a}</div>`;
+                });
+
+                // Push new values
+                hrData.push(data.hr);
+                spo2Data.push(data.spo2);
+                metData.push(data.met);
+
+                // Limit to last 20 points
+                if (hrData.length > 20) hrData.shift();
+                if (spo2Data.length > 20) spo2Data.shift();
+                if (metData.length > 20) metData.shift();
+
+                const labels = hrData.map((_, i) => i + 1);
+
+                hrChart.data.labels = labels;
+                spo2Chart.data.labels = labels;
+                metChart.data.labels = labels;
+
+                hrChart.data.datasets[0].data = hrData;
+                spo2Chart.data.datasets[0].data = spo2Data;
+                metChart.data.datasets[0].data = metData;
+
+                hrChart.update();
+                spo2Chart.update();
+                metChart.update();
+            });
+    }
+
+    const hrChart = new Chart(document.getElementById('hrChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Heart Rate',
+                borderColor: 'blue',
+                backgroundColor: 'rgba(0,0,255,0.1)',
+                data: []
+            }]
+        }
+    });
+
+    const spo2Chart = new Chart(document.getElementById('spo2Chart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'SpO₂ (%)',
+                borderColor: 'green',
+                backgroundColor: 'rgba(0,255,0,0.1)',
+                data: []
+            }]
+        }
+    });
+
+    const metChart = new Chart(document.getElementById('metChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Activity (METs)',
+                borderColor: 'orange',
+                backgroundColor: 'rgba(255,165,0,0.1)',
+                data: []
+            }]
+        }
+    });
+
+    setInterval(updateDashboard, 2000);
+</script>
+
+</body>
+</html>
